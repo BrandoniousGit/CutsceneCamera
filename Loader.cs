@@ -1,6 +1,7 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
+using CutsceneCamera;
 using Globals;
 using GTFO.API;
 using HarmonyLib;
@@ -11,29 +12,28 @@ namespace ChaosGTFO
     [BepInPlugin(GUID, MODNAME, VERSION)]
     public class Loader : BasePlugin
     {
-        public const string MODNAME = "ChaosGTFO";
+        public const string MODNAME = "CutsceneCamera";
         public const string AUTHOR = "Brandonious";
-        public const string GUID = "com.Brandonious.ChaosGTFO";
+        public const string GUID = "com.Brandonious.CutsceneCamera";
         public const string VERSION = "1.0.0";
 
         public static ManualLogSource Logger;
 
         public override void Load()
         {
-            ClassInjector.RegisterTypeInIl2Cpp<ChaosLogic>();
+            ClassInjector.RegisterTypeInIl2Cpp<CutsceneCameraLogic>();
 
             EventAPI.OnManagersSetup += () => {
-                var cLogic = Global.Current.gameObject.AddComponent<ChaosLogic>();
-                LevelAPI.OnEnterLevel += cLogic.LevelStarted;
-                LevelAPI.OnLevelCleanup += cLogic.LevelCleanup;
+                var ccLogic = Global.Current.gameObject.AddComponent<CutsceneCameraLogic>();
+                LevelAPI.OnEnterLevel += ccLogic.LevelStarted;
             };
 
             Logger = Log;
 
             var harmony = new Harmony(MODNAME);
-            harmony.PatchAll(typeof(GlowstickGunPatch));
+            harmony.PatchAll();
 
-            Log.LogWarning($"Plugin {"ChaosGTFO"} Loaded! Have fun.. :)");
+            Log.LogWarning($"Plugin {"CutsceneCamera"} Loaded!");
         }
     }
 }
