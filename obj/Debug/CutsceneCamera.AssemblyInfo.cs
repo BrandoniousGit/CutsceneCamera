@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CutsceneCamera")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bceb660b59c011bfe1c2efc11cbec2069d8028fd")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+24d4409669bb25517c36e93a5694ce7bfba14de5")]
 [assembly: System.Reflection.AssemblyProductAttribute("CutsceneCamera")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CutsceneCamera")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
