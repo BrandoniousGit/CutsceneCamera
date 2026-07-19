@@ -8,3 +8,5 @@ C:\Users\brand\source\repos\CutsceneCamera\CutsceneCamera\obj\Debug\CutsceneCame
 C:\Users\brand\source\repos\CutsceneCamera\CutsceneCamera\obj\Debug\CutsceneCamera.dll
 C:\Users\brand\source\repos\CutsceneCamera\CutsceneCamera\obj\Debug\refint\CutsceneCamera.dll
 C:\Users\brand\source\repos\CutsceneCamera\CutsceneCamera\obj\Debug\ref\CutsceneCamera.dll
+C:\Users\brand\AppData\Roaming\r2modmanPlus-local\GTFO\profiles\Default\BepInEx\plugins\CutsceneCamera\CutsceneCamera.deps.json
+C:\Users\brand\AppData\Roaming\r2modmanPlus-local\GTFO\profiles\Default\BepInEx\plugins\CutsceneCamera\CutsceneCamera.dll

@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace CutsceneCamera
+namespace StrikerBossfight.CutsceneCamera
 {
     public class CameraPositionData
     {
@@ -11,6 +11,7 @@ namespace CutsceneCamera
         public float ShotDuration { get; set; } = 5;
         public float WaitAfterMove { get; set; }
         public EasingType CamEasingType { get; set; } = EasingType.None;
+        public bool LerpTowardsThisPoint { get; set; }
 
         #region enums
         public enum EasingType

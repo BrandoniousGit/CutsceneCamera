@@ -4,7 +4,7 @@
 		<!--
 		Use the following property to set your preferred r2modman profile
 		-->
-		<Profile>UnityExplorer</Profile>
+		<Profile>Default</Profile>
 
 		<TargetFramework>net6.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>

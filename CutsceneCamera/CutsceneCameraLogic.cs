@@ -1,9 +1,11 @@
-﻿using Player;
+﻿using AIGraph;
+using LevelGeneration;
+using Player;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace CutsceneCamera
+namespace StrikerBossfight.CutsceneCamera
 {
     public class CutsceneCameraLogic : MonoBehaviourExtended
     {
@@ -26,14 +28,17 @@ namespace CutsceneCamera
         public CameraSequenceData data;
         public CameraPositionData current;
 
+        //public float alignTimer = 0;
+        //public bool aligningToPath;
+
         public AnimationCurve easeInCurve = new AnimationCurve(
-        new Keyframe(0f, 0f, 0f, 2f),   // Flat start
-        new Keyframe(1f, 1f, 0f, 0f)    // Fast end
+            new Keyframe(0f, 0f, 0f, 2f),   // Flat start
+            new Keyframe(1f, 1f, 0f, 0f)    // Fast end
         );
 
         public AnimationCurve easeOutCurve = new AnimationCurve(
-        new Keyframe(0f, 0f, 2f, 0f),   // Fast start
-        new Keyframe(1f, 1f, 0f, 0f)    // Flat end
+            new Keyframe(0f, 0f, 2f, 0f),   // Fast start
+            new Keyframe(1f, 1f, 0f, 0f)    // Flat end
         );
 
         public AnimationCurve easeInOutCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
@@ -49,7 +54,7 @@ namespace CutsceneCamera
                     StartRot = new Vector3(0f, 270f, 0f),
                     EndRot = new Vector3(0f, 270f, 0f),
                     CamEasingType = CameraPositionData.EasingType.EaseOut,
-                    WaitAfterMove = 5
+                    WaitAfterMove = 2.2f
                 },
                 new CameraPositionData
                 {
@@ -58,7 +63,7 @@ namespace CutsceneCamera
                     StartRot = new Vector3(0f, 270f, 0f),
                     EndRot = new Vector3(0f, 270f, 0f),
                     CamEasingType = CameraPositionData.EasingType.EaseOut,
-                    WaitAfterMove = 3
+                    WaitAfterMove = 2.2f
                 }
             };
 
@@ -139,6 +144,8 @@ namespace CutsceneCamera
                 PlayCutscene();
             }
 
+            UpdateCuller();
+
             #region debugcam
             if (cutsceneActive && debugMode)
             {
@@ -183,30 +190,85 @@ namespace CutsceneCamera
                 rotX += mouseX * rotationSpeed * Time.deltaTime;
                 rotY -= mouseY * rotationSpeed * Time.deltaTime;
 
-                mouseY = Mathf.Clamp(mouseY, -90f, 90f);
+                _ = Mathf.Clamp(mouseY, -90f, 90f);
 
                 cameraParent.transform.rotation = Quaternion.Euler(rotY, rotX, 0);
             }
             #endregion
         }
 
-        public void ToggleCutscene(bool toggle)
+        public void ToggleCutscene(bool isActive)
         {
-            cutsceneActive = toggle;
-            player.PlayerSyncModel.SetHeadVisible(toggle, toggle);
-            cutsceneCanvasObject.SetActive(toggle);
-            player.Locomotion.enabled = !toggle;
-            fpsCamera.GetComponent<UI_Apply>().enabled = !toggle;
-            fpsCamera.parent = toggle ? cameraParent.transform : player.FPItemHolder.transform.parent;
-            player.FPSCamera.LookSpeedModifier = toggle ? 0 : 1;
-            player.FPItemHolder.ItemHiddenTrigger = toggle;
-            GuiManager.CrosshairLayer.SetVisible(!toggle);
+            if (!isActive)
+            {
+                cameraParent.transform.position = player.FPItemHolder.transform.position;
+            }
+
+            cutsceneActive = isActive;
+            player.PlayerSyncModel.SetHeadVisible(isActive, isActive);
+            cutsceneCanvasObject.SetActive(isActive);
+            player.Locomotion.enabled = !isActive;
+            fpsCamera.GetComponent<UI_Apply>().enabled = !isActive;
+            fpsCamera.parent = isActive ? cameraParent.transform : player.FPItemHolder.transform.parent;
+            player.FPSCamera.LookSpeedModifier = isActive ? 0 : 1;
+            player.FPItemHolder.ItemHiddenTrigger = isActive;
+            GuiManager.CrosshairLayer.SetVisible(!isActive);
+        }
+
+        private void UpdateCuller()
+        {
+            if (!cutsceneActive)
+            {
+                return;
+            }
+
+            var cullPos = fpsCamera.transform.position;
+
+            if (Physics.Raycast(cullPos, Vector3.down, out var hit, 50f, LayerManager.MASK_WORLD))
+            {
+                cullPos = hit.m_Point;
+            }
+
+            if (hit.transform != null)
+            {
+                var node = FindCourseNodeInParent(hit.transform);
+
+                if (node != null && player.m_movingCuller.CurrentNode.CourseNode != node)
+                {
+                    player.m_movingCuller.SetCurrentNode(node.m_cullNode);
+                }
+            }
+
+            player.m_movingCuller.UpdatePosition(player.m_dimensionIndex, cullPos);
+        }
+
+        public static AIG_CourseNode? FindCourseNodeInParent(Transform nodeItem)
+        {
+            var current = nodeItem.parent;
+
+            while (current != null)
+            {
+                LG_Area? area = current.GetComponent<LG_Area>() ?? null;
+
+                if (area != null)
+                {
+                    return area.m_courseNode;
+                }
+                else
+                {
+                    current = current.parent;
+                }
+            }
+
+            return null;
         }
 
         public void PlayCutscene()
         {
             timer += 1 * Time.deltaTime;
-            player.m_movingCuller.UpdatePosition(player.DimensionIndex, cameraParent.transform.position);
+
+            var newCullPos = Physics.Raycast(cameraParent.transform.position, Vector3.down, out var hit) ? hit.point : cameraParent.transform.position;
+            player.m_movingCuller.UpdatePosition(player.m_dimensionIndex, newCullPos);
 
             if (timer <= current.ShotDuration)
             {
@@ -226,8 +288,29 @@ namespace CutsceneCamera
                         break;
                 }
 
-                cameraParent.transform.position = Vector3.Lerp(current.StartPos, current.EndPos, t);
-                cameraParent.transform.rotation = Quaternion.Euler(current.StartRot);
+                var targetPosition = Vector3.Lerp(current.StartPos, current.EndPos, t);
+                var targetAngle = Quaternion.Euler(current.StartRot);
+
+                #region aligning
+                //if (aligningToPath)
+                //{
+                //    alignTimer += Time.deltaTime;
+
+                //    float t2 = Mathf.Clamp01(alignTimer / 4.0f);
+                //    cameraParent.transform.position = Vector3.Lerp(cameraParent.transform.position, targetPosition, t2);
+                //    cameraParent.transform.rotation = Quaternion.Lerp(cameraParent.transform.rotation, targetAngle, t2);
+
+                //    if (t2 >= 1f)
+                //    {
+                //        aligningToPath = false;
+                //    }
+
+                //    return;
+                //}
+                #endregion
+
+                cameraParent.transform.position = targetPosition;
+                cameraParent.transform.rotation = targetAngle;
 
                 return;
             }
@@ -238,19 +321,29 @@ namespace CutsceneCamera
                 return;
             }
 
-            if (currentShot + 1 < data.SequenceData.Count) current = UpdateShot(); 
-            else ToggleCutscene(false);
+            if (currentShot + 1 < data.SequenceData.Count) current = UpdateShot();
+            else
+            {
+                ToggleCutscene(false);
+            }
         }
 
         public CameraPositionData UpdateShot()
         {
-            Debug.LogError("ShotUpdated");
-
-            currentShot += 1;
+            currentShot++;
             waitTimer = 0;
             timer = 0;
+            //alignTimer = 0;
+            //aligningToPath = false;
 
-            return data.SequenceData[currentShot];
+            var next = data.SequenceData[currentShot];
+
+            //if (next.LerpTowardsThisPoint)
+            //{
+            //    aligningToPath = true;
+            //}
+
+            return next;
         }
 
         public IEnumerator FadeOut(float fadeTime)

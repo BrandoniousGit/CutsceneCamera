@@ -14,9 +14,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\brand\\source\\repos\\CutsceneCamera\\CutsceneCamera\\CutsceneCamera.csproj",
-      "projectName": "CutsceneCamera",
-      "projectPath": "C:\\Users\\brand\\source\\repos\\CutsceneCamera\\CutsceneCamera\\CutsceneCamera.csproj",
+      "projectUniqueName": "C:\\Users\\brand\\source\\repos\\CutsceneCamera\\CutsceneCamera\\StrikerBossfight.csproj",
+      "projectName": "BossfightLevel",
+      "projectPath": "C:\\Users\\brand\\source\\repos\\CutsceneCamera\\CutsceneCamera\\StrikerBossfight.csproj",
       "packagesPath": "C:\\Users\\brand\\.nuget\\packages\\",
       "outputPath": "C:\\Users\\brand\\source\\repos\\CutsceneCamera\\CutsceneCamera\\obj\\",
       "projectStyle": "PackageReference",

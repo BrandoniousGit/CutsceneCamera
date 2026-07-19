@@ -1,2 +1,2 @@
-# CutsceneCamera
- A mod that allows for custom cutscenes in GTFO
+# StrikerBossfight
+a mod that farts

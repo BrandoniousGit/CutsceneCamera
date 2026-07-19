@@ -5,7 +5,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CutsceneCamera
+namespace StrikerBossfight.CutsceneCamera
 {
     public class CameraSequenceData
     {

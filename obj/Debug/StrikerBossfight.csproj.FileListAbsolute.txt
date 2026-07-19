@@ -1,0 +1,12 @@
+C:\Users\brand\AppData\Roaming\r2modmanPlus-local\GTFO\profiles\Default\BepInEx\plugins\CutsceneCamera\CutsceneCamera.deps.json
+C:\Users\brand\AppData\Roaming\r2modmanPlus-local\GTFO\profiles\Default\BepInEx\plugins\CutsceneCamera\CutsceneCamera.dll
+C:\Users\brand\source\repos\CutsceneCamera\CutsceneCamera\obj\Debug\StrikerBossfight.csproj.AssemblyReference.cache
+C:\Users\brand\source\repos\CutsceneCamera\CutsceneCamera\obj\Debug\StrikerBossfight.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\brand\source\repos\CutsceneCamera\CutsceneCamera\obj\Debug\StrikerBossfight.AssemblyInfoInputs.cache
+C:\Users\brand\source\repos\CutsceneCamera\CutsceneCamera\obj\Debug\StrikerBossfight.AssemblyInfo.cs
+C:\Users\brand\source\repos\CutsceneCamera\CutsceneCamera\obj\Debug\StrikerBossfight.csproj.CoreCompileInputs.cache
+C:\Users\brand\AppData\Roaming\r2modmanPlus-local\GTFO\profiles\Default\BepInEx\plugins\BossfightLevel\BossfightLevel.deps.json
+C:\Users\brand\AppData\Roaming\r2modmanPlus-local\GTFO\profiles\Default\BepInEx\plugins\BossfightLevel\BossfightLevel.dll
+C:\Users\brand\source\repos\CutsceneCamera\CutsceneCamera\obj\Debug\BossfightLevel.dll
+C:\Users\brand\source\repos\CutsceneCamera\CutsceneCamera\obj\Debug\refint\BossfightLevel.dll
+C:\Users\brand\source\repos\CutsceneCamera\CutsceneCamera\obj\Debug\ref\BossfightLevel.dll
