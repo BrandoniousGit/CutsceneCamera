@@ -27,6 +27,7 @@ namespace StrikerBossfight
             ClassInjector.RegisterTypeInIl2Cpp<AnimationEventReceiver>();
             ClassInjector.RegisterTypeInIl2Cpp<SunAttack>();
             ClassInjector.RegisterTypeInIl2Cpp<PlumeAttack>();
+            ClassInjector.RegisterTypeInIl2Cpp<Plume>();
             ClassInjector.RegisterTypeInIl2Cpp<FireballAttack>();
             ClassInjector.RegisterTypeInIl2Cpp<Fireball>();
             ClassInjector.RegisterTypeInIl2Cpp<DespawnEffect>();

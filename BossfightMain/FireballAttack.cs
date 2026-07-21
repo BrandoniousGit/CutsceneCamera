@@ -36,6 +36,7 @@ namespace BossfightLevel.BossfightMain
             }
             else
             {
+                OnFireballAttackFinished?.Invoke();
                 Destroy(gameObject);
             }
         }

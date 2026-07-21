@@ -6,16 +6,24 @@ using Player;
 using StrikerBossfight.BossfightMain;
 using System.Collections;
 using UnityEngine;
+using static RootMotion.FinalIK.IKSolverVR;
 
 namespace BossfightLevel.BossfightMain
 {
     class BossfightCore : MonoBehaviourExtended
     {
+        public enum PlumePattern
+        {
+            OnPlayers,
+            CircleExpand,
+            CircleExpandAlternating,
+            Spiral
+        }
+
         private EnemyAgent selectedEnemy;
         private Animator enemyAnim;
 
         private GameObject sunPrefab;
-        private GameObject firePlumePrefab;
         private GameObject preFireballEffectPrefab;
         private GameObject flameAuraPrefab;
         private GameObject firePlumeShortPrefab;
@@ -31,24 +39,25 @@ namespace BossfightLevel.BossfightMain
         private bool fadeMusicLooperOut;
 
         private bool introCompleted;
-        private bool musicStarted;
 
-        public string assetToSpawn = "Assets/ParticleEffects/Effect/FantasySun.prefab";
+        private bool canAttack;
+        private bool isOnCooldown;
+        private float attackCooldown;
 
         public void OnEnable()
         {
             AnimationEventReceiver.PunchEventTriggered += OnPunch;
             SunAttack.OnSunAttackFinished += GoToIdleFloating;
-            PlumeAttack.OnPlumeAttackFinished += GoToIdleFloating;
             FireballAttack.OnFireballAttackFinished += GoToIdleFloating;
+            PlumeAttack.OnPlumeAttackFinished += GoToIdleFloating;
         }        
         
         public void OnDisable()
         {
             AnimationEventReceiver.PunchEventTriggered -= OnPunch;
             SunAttack.OnSunAttackFinished -= GoToIdleFloating;
-            PlumeAttack.OnPlumeAttackFinished -= GoToIdleFloating;
             FireballAttack.OnFireballAttackFinished -= GoToIdleFloating;
+            PlumeAttack.OnPlumeAttackFinished -= GoToIdleFloating;
         }
 
         public void OnApplicationFocus(bool hasFocus)
@@ -92,7 +101,6 @@ namespace BossfightLevel.BossfightMain
 
         public void StopAndResetMusic()
         {
-            musicStarted = false;
             currentMusicStep = -1;
             musicLooper.Stop();
             musicTransitioner.Stop();
@@ -100,6 +108,11 @@ namespace BossfightLevel.BossfightMain
 
         public void Update()
         {
+            if (GameStateManager.CurrentStateName == eGameStateName.ExpeditionFail)
+            {
+                StopAndResetMusic();
+            }
+
             if (!RundownManager.ExpeditionIsStarted)
             {
                 return;
@@ -118,8 +131,10 @@ namespace BossfightLevel.BossfightMain
                 }
             }
 
-            if (selectedEnemy == null)
+            if (selectedEnemy == null || !selectedEnemy.Alive)
             {
+                canAttack = false;
+
                 var enemyList = AIG_CourseGraph.GetReachableEnemiesInNodes(PlayerManager.GetLocalPlayerAgent().CourseNode, 100);
 
                 foreach (var enemy in enemyList)
@@ -127,6 +142,7 @@ namespace BossfightLevel.BossfightMain
                     if (enemy.EnemyData.persistentID == 150u)
                     {
                         selectedEnemy = enemy;
+                        selectedEnemy.transform.position += Vector3.up * 2;
                     }
                 }
 
@@ -140,42 +156,60 @@ namespace BossfightLevel.BossfightMain
 
                     var eventReceiver = selectedEnemy.gameObject.AddComponent<AnimationEventReceiver>();
                 }
-
                 return;
             }
+
+            selectedEnemy.Locomotion.m_maxMovementSpeed = 0;
 
             if (!introCompleted)
             {
                 PerformIntro();
             }
 
-            if (Input.GetKeyDown(KeyCode.L))
+            if (canAttack)
             {
-                Debug.Log($"MusicTransitioner is {musicTransitioner.isPlaying}");
-                Debug.Log($"MusicLooper is {musicLooper.isPlaying}");
+                attackCooldown = 12;
+                canAttack = false;
+                enemyAnim.SetTrigger("PraiseSun");
 
-                CellSound.StopAll();
-                musicStarted = true;
-            }              
-            
+                var random = UnityEngine.Random.Range(0, 3);
+                var random2 = UnityEngine.Random.Range(0, 3);
+
+                switch (random)
+                {
+                    case 0:
+                        SpawnSunAttack();
+                        break;
+                    case 1:
+                        SpawnFireballAttack(10, 0.8f);
+                        break;                    
+                    case 2:
+                        SpawnFirePlumeAttacks((PlumePattern)random2, 5, 1f);
+                        break;
+                }
+            }
+            else
+            {
+                if (isOnCooldown && attackCooldown > 0)
+                {
+                    attackCooldown -= Time.deltaTime;
+                }
+                else if (attackCooldown < 0)
+                {
+                    isOnCooldown = false;
+                    canAttack = true;
+                }
+            }
+
             if (Input.GetKeyDown(KeyCode.M))
             {
-                ProgressMusic();
+                canAttack = true;
             }                        
             
             if (Input.GetKeyDown(KeyCode.N))
             {
+                CellSound.StopAll();
                 StopAndResetMusic();
-            }             
-            
-            if (Input.GetKeyDown(KeyCode.C))
-            {
-                SpawnSinglePlumeAttack(PlayerManager.GetLocalPlayerAgent().FPSCamera.m_camRayHit.point);
-            }             
-            
-            if (Input.GetKeyDown(KeyCode.V))
-            {
-                SpawnSunAttack();
             }
         }
 
@@ -196,7 +230,6 @@ namespace BossfightLevel.BossfightMain
             currentMusicStep = -1;
 
             sunPrefab = AssetShardManager.GetLoadedAsset<GameObject>("Assets/-CustomStuff/CustomBossfightStuff/Attacks/SunAttack.prefab");
-            firePlumePrefab = AssetShardManager.GetLoadedAsset<GameObject>("Assets/-CustomStuff/CustomBossfightStuff/Attacks/FirePlume.prefab");
             firePlumeShortPrefab = AssetShardManager.GetLoadedAsset<GameObject>("Assets/-CustomStuff/CustomBossfightStuff/Attacks/FirePlumeShort.prefab");
             preFireballEffectPrefab = AssetShardManager.GetLoadedAsset<GameObject>("Assets/-CustomStuff/CustomBossfightStuff/Attacks/PreFireball.prefab");
             flameAuraPrefab = AssetShardManager.GetLoadedAsset<GameObject>("Assets/-CustomStuff/CustomBossfightStuff/Attacks/FlameAura.prefab");
@@ -209,7 +242,11 @@ namespace BossfightLevel.BossfightMain
         internal void LevelQuit()
         {
             BossfightPatches.OnVolumeChangedAction -= OnVolumeChanged;
-            musicStarted = false;
+            StopAndResetMusic();
+
+            Destroy(escapeMusic);
+            Destroy(musicLooper);
+            Destroy(musicTransitioner);
         }
 
         public void LoadAudio()
@@ -218,9 +255,17 @@ namespace BossfightLevel.BossfightMain
 
             Debug.Log("Audio Loading");
 
-            escapeMusic = Instantiate(AssetShardManager.GetLoadedAsset<GameObject>($"Assets/-CustomStuff/CustomBossfightStuff/Moosic.prefab")).GetComponent<AudioSource>();
-            musicLooper = Instantiate(AssetShardManager.GetLoadedAsset<GameObject>($"Assets/-CustomStuff/Music/MusicLooper.prefab")).GetComponent<AudioSource>();
-            musicTransitioner = Instantiate(AssetShardManager.GetLoadedAsset<GameObject>($"Assets/-CustomStuff/Music/MusicTransitioner.prefab")).GetComponent<AudioSource>();
+            escapeMusic = gameObject.AddComponent<AudioSource>();
+            musicLooper = gameObject.AddComponent<AudioSource>();
+            musicTransitioner = gameObject.AddComponent<AudioSource>();
+
+            escapeMusic.loop = false;
+            musicLooper.loop = true;
+            musicTransitioner.loop = false;            
+            
+            escapeMusic.volume = 0.35f;
+            musicLooper.volume = 0.35f;
+            musicTransitioner.volume = 0.35f;
 
             audioClips.Add(AssetShardManager.GetLoadedAsset<AudioClip>($"Assets/-CustomStuff/Music/Opening.ogg"));
             audioClips.Add(AssetShardManager.GetLoadedAsset<AudioClip>($"Assets/-CustomStuff/Music/Phase1Loop.ogg"));
@@ -238,48 +283,34 @@ namespace BossfightLevel.BossfightMain
         {
             var newEffect = Instantiate(preFireballEffectPrefab, Vector3.zero, Quaternion.identity);
             var fireballAttack = newEffect.AddComponent<FireballAttack>();
-            fireballAttack.transform.position += selectedEnemy.transform.position + Vector3.up * 1.2f;
+            fireballAttack.transform.position += selectedEnemy.transform.position + (Vector3.up * 4f);
             fireballAttack.pulseInterval = pulseInterval;
             fireballAttack.duration = duration;
-
-            enemyAnim.SetTrigger("PraiseSun");
         }
 
         public void SpawnSunAttack()
         {
             var newEffect = Instantiate(sunPrefab, Vector3.zero, Quaternion.identity);
-            newEffect.transform.position += selectedEnemy.transform.position + Vector3.up * 8f;
+            newEffect.transform.position += selectedEnemy.transform.position + (Vector3.up * 10f);
             newEffect.AddComponent<SunAttack>();
-
-            enemyAnim.SetTrigger("PraiseSun");
-        }        
+        }    
         
-        public async void SpawnFirePlumeAttacks(List<Vector3> plumePositions, int delayBetweenSpawns = 0, bool isShort = false)
-        {
-            foreach (var pos in plumePositions)
-            {
-                var newEffect = Instantiate(isShort ? firePlumeShortPrefab : firePlumePrefab, pos, Quaternion.identity);
-                newEffect.transform.position += Vector3.up * 0.5f;
-                var plumeAttack = newEffect.AddComponent<PlumeAttack>();
-                plumeAttack.isShort = isShort;
-
-                await Task.Delay(delayBetweenSpawns);
-            }
-        }        
-        
-        public void SpawnSinglePlumeAttack(Vector3 pos, bool isShort = false)
-        {
-            var newEffect = Instantiate(isShort ? firePlumeShortPrefab : firePlumePrefab, pos, Quaternion.identity);
-            newEffect.transform.position += Vector3.up * 0.5f;
+        public void SpawnFirePlumeAttacks(PlumePattern pattern, int count = 1, float pulseInterval = 1f, bool isShort = false)
+        { 
+            var newEffect = Instantiate(flameAuraPrefab, selectedEnemy.transform.position, Quaternion.identity);
             var plumeAttack = newEffect.AddComponent<PlumeAttack>();
-            plumeAttack.isShort = isShort;
+            plumeAttack.Init(pattern, count, pulseInterval, isShort);
         }
         #endregion
 
         #region states
         public void GoToIdleFloating()
         {
-            enemyAnim.SetTrigger("GoToIdleFloating");
+            if (selectedEnemy != null && selectedEnemy.Alive)
+            {
+                enemyAnim.SetTrigger("GoToIdleFloating");
+                isOnCooldown = true;
+            }
         }
         #endregion
 

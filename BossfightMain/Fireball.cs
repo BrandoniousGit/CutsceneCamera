@@ -17,7 +17,6 @@ namespace BossfightLevel.BossfightMain
         private Vector3 previousPos;
         private GameObject explosionPrefab;
         private LayerMask layerMask;
-        private LayerMask hitLayerMask;
 
         private Vector3 target;
         private Vector3 direction;
@@ -27,12 +26,10 @@ namespace BossfightLevel.BossfightMain
         {
             explosionPrefab = AssetShardManager.GetLoadedAsset<GameObject>("Assets/-CustomStuff/CustomBossfightStuff/Attacks/Explosion.prefab");
             layerMask = LayerManager.MASK_ENEMY_PROJECTILE_COLLIDERS & ~LayerMask.GetMask("PlayerSynced");
-            hitLayerMask = LayerMask.GetMask("PlayerMover");
 
             var random = UnityEngine.Random.Range(0, PlayerManager.PlayerAgentsInLevel.Count - 1);
 
             player = PlayerManager.PlayerAgentsInLevel[random];
-            target = player.PlayerCharacterController.m_characterController.bounds.center;
 
             previousPos = transform.position;
         }
@@ -52,7 +49,13 @@ namespace BossfightLevel.BossfightMain
             }
             else
             {
-                direction = (target - transform.position).normalized * 25 * Time.deltaTime;
+                var layerMask = LayerManager.MASK_ENEMY_PROJECTILE_COLLIDERS & ~LayerMask.GetMask("PlayerSynced") & ~LayerMask.GetMask("PlayerMover");
+
+                if (Physics.Raycast(player.PlayerCharacterController.m_characterController.bounds.center, Vector3.down, out var hitInfo, Mathf.Infinity, layerMask))
+                {
+                    target = hitInfo.point;
+                    direction = (target - transform.position).normalized * 25 * Time.deltaTime;
+                }
             }
 
             Vector3 currentPosition = transform.position;
@@ -66,7 +69,7 @@ namespace BossfightLevel.BossfightMain
                 var cellsoundplayer = new CellSoundPlayer();
                 cellsoundplayer.Post(704948356u, hit.point);
 
-                if (Physics.Raycast(previousPos, player.PlayerCharacterController.m_characterController.bounds.center - previousPos, out var hitInfo, 3f, hitLayerMask))
+                if (Physics.Raycast(previousPos, player.PlayerCharacterController.m_characterController.bounds.center - previousPos, out var hitInfo, 3f, layerMask))
                 {
                     if (hitInfo.collider.gameObject.layer == LayerManager.LAYER_PLAYER_MOVER)
                     {
