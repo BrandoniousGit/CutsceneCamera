@@ -31,7 +31,7 @@ namespace BossfightLevel.BossfightMain
             {
                 sunlight.intensity = Mathf.Lerp(0.2f, 0.9f, 1 - (timer / 10));
                 sunlight.range = Mathf.Lerp(0.5f, 75, 1 - (timer / 10));
-                transform.localScale = Vector3.Lerp(Vector3.one * 0.05f, Vector3.one * 1.8f, 1 - (timer / 10));
+                transform.localScale = Vector3.Lerp(Vector3.one * 0.05f, Vector3.one * 1.5f, 1 - (timer / 10));
             }
 
             if (timer < 6 && timer > -4)

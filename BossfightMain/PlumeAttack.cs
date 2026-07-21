@@ -82,6 +82,12 @@ namespace BossfightLevel.BossfightMain
                     for (int i = 0; i < 6 * iteration; i++)
                     {
                         float angle = i * (360f / (6f * iteration));
+
+                        if (iteration % 2 == 0)
+                        {
+                            angle += (360f / (6f * iteration)) / 2;
+                        }
+
                         float radians = angle * Mathf.Deg2Rad;
 
                         if (Physics.Raycast(transform.position, Vector3.down, out var hitInfo, Mathf.Infinity, layerMask))

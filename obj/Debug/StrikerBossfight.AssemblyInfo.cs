@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BossfightLevel")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7395253727df64badb65614077fc984753cd8477")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fda1a4765cee8ff5466a6c9947c21f800c3ea8d2")]
 [assembly: System.Reflection.AssemblyProductAttribute("BossfightLevel")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BossfightLevel")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

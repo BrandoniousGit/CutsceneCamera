@@ -1,4 +1,5 @@
-﻿using AIGraph;
+﻿using Agents;
+using AIGraph;
 using AssetShards;
 using BepInEx.Unity.IL2CPP.Utils.Collections;
 using Enemies;
@@ -37,12 +38,17 @@ namespace BossfightLevel.BossfightMain
 
         private int currentMusicStep;
         private bool fadeMusicLooperOut;
+        private bool enteredPhase2;
+        private bool enteredPhase3;
+        private bool enteredFinal;
 
-        private bool introCompleted;
+        private bool introStarted;
+        private bool introFinished;
 
         private bool canAttack;
         private bool isOnCooldown;
         private float attackCooldown;
+        private float targetHeight = 2;
 
         public void OnEnable()
         {
@@ -80,6 +86,13 @@ namespace BossfightLevel.BossfightMain
         public void ProgressMusic()
         {
             currentMusicStep += 1;
+
+            if (currentMusicStep == 6)
+            {
+                fadeMusicLooperOut = true;
+                StartCoroutine(WaitForFinalMusic(6f).WrapToIl2Cpp());
+                return;
+            }
 
             Debug.Log($"Current music step is {currentMusicStep}, playing {audioClips[currentMusicStep].name}!");
 
@@ -142,7 +155,9 @@ namespace BossfightLevel.BossfightMain
                     if (enemy.EnemyData.persistentID == 150u)
                     {
                         selectedEnemy = enemy;
-                        selectedEnemy.transform.position += Vector3.up * 2;
+                        selectedEnemy.EnemyBalancingData.Health.ArmorDamageMulti = 0;
+                        selectedEnemy.EnemyBalancingData.Health.WeakspotDamageMulti = 0;
+                        targetHeight = selectedEnemy.transform.position.y;
                     }
                 }
 
@@ -158,35 +173,35 @@ namespace BossfightLevel.BossfightMain
                 }
                 return;
             }
-
+            
             selectedEnemy.Locomotion.m_maxMovementSpeed = 0;
+            selectedEnemy.transform.position = new Vector3(selectedEnemy.transform.position.x, targetHeight, selectedEnemy.transform.position.z);
 
-            if (!introCompleted)
+            if (!introStarted)
             {
-                PerformIntro();
+                StartCoroutine(PerformIntro().WrapToIl2Cpp());
+            }
+
+            if (!introFinished)
+            {
+                return;
+            }
+
+            if (selectedEnemy.Damage.Health < 600 && !enteredPhase2)
+            {
+                enteredPhase2 = true;
+                ProgressMusic();
+            }            
+            
+            if (selectedEnemy.Damage.Health < 300 && !enteredPhase3)
+            {
+                enteredPhase3 = true;
+                ProgressMusic();
             }
 
             if (canAttack)
             {
-                attackCooldown = 12;
-                canAttack = false;
-                enemyAnim.SetTrigger("PraiseSun");
-
-                var random = UnityEngine.Random.Range(0, 3);
-                var random2 = UnityEngine.Random.Range(0, 3);
-
-                switch (random)
-                {
-                    case 0:
-                        SpawnSunAttack();
-                        break;
-                    case 1:
-                        SpawnFireballAttack(10, 0.8f);
-                        break;                    
-                    case 2:
-                        SpawnFirePlumeAttacks((PlumePattern)random2, 5, 1f);
-                        break;
-                }
+                Attack();
             }
             else
             {
@@ -199,23 +214,7 @@ namespace BossfightLevel.BossfightMain
                     isOnCooldown = false;
                     canAttack = true;
                 }
-            }
-
-            if (Input.GetKeyDown(KeyCode.M))
-            {
-                canAttack = true;
-            }                        
-            
-            if (Input.GetKeyDown(KeyCode.N))
-            {
-                CellSound.StopAll();
-                StopAndResetMusic();
-            }
-        }
-
-        public async void PerformIntro()
-        {
-            introCompleted = true;
+            }      
         }
 
         public void OnPunch()
@@ -223,11 +222,31 @@ namespace BossfightLevel.BossfightMain
             Debug.Log("PunchPerformed");
         }
 
+        public void Attack()
+        {
+            canAttack = false;
+            enemyAnim.SetTrigger("PraiseSun");
+
+            var random = UnityEngine.Random.Range(0, 3);
+            var random2 = UnityEngine.Random.Range(0, 3);
+
+            switch (random)
+            {
+                case 0:
+                    SpawnSunAttack();
+                    break;
+                case 1:
+                    SpawnFireballAttack(10, 0.8f);
+                    break;
+                case 2:
+                    SpawnFirePlumeAttacks((PlumePattern)random2, 5, 1f);
+                    break;
+            }
+        }
+
         internal void LevelStarted()
         {
             BossfightPatches.OnVolumeChangedAction += OnVolumeChanged;
-
-            currentMusicStep = -1;
 
             sunPrefab = AssetShardManager.GetLoadedAsset<GameObject>("Assets/-CustomStuff/CustomBossfightStuff/Attacks/SunAttack.prefab");
             firePlumeShortPrefab = AssetShardManager.GetLoadedAsset<GameObject>("Assets/-CustomStuff/CustomBossfightStuff/Attacks/FirePlumeShort.prefab");
@@ -244,6 +263,12 @@ namespace BossfightLevel.BossfightMain
             BossfightPatches.OnVolumeChangedAction -= OnVolumeChanged;
             StopAndResetMusic();
 
+            currentMusicStep = -1;
+            introStarted = false;
+            introFinished = false;
+            enteredPhase2 = false;
+            enteredPhase3 = false;
+
             Destroy(escapeMusic);
             Destroy(musicLooper);
             Destroy(musicTransitioner);
@@ -252,8 +277,6 @@ namespace BossfightLevel.BossfightMain
         public void LoadAudio()
         {
             audioClips = new List<AudioClip>();
-
-            Debug.Log("Audio Loading");
 
             escapeMusic = gameObject.AddComponent<AudioSource>();
             musicLooper = gameObject.AddComponent<AudioSource>();
@@ -281,6 +304,8 @@ namespace BossfightLevel.BossfightMain
         #region attacks
         public void SpawnFireballAttack(float duration, float pulseInterval = 2)
         {
+            attackCooldown = 8;
+
             var newEffect = Instantiate(preFireballEffectPrefab, Vector3.zero, Quaternion.identity);
             var fireballAttack = newEffect.AddComponent<FireballAttack>();
             fireballAttack.transform.position += selectedEnemy.transform.position + (Vector3.up * 4f);
@@ -290,13 +315,17 @@ namespace BossfightLevel.BossfightMain
 
         public void SpawnSunAttack()
         {
+            attackCooldown = 8;
+
             var newEffect = Instantiate(sunPrefab, Vector3.zero, Quaternion.identity);
             newEffect.transform.position += selectedEnemy.transform.position + (Vector3.up * 10f);
             newEffect.AddComponent<SunAttack>();
         }    
         
         public void SpawnFirePlumeAttacks(PlumePattern pattern, int count = 1, float pulseInterval = 1f, bool isShort = false)
-        { 
+        {
+            attackCooldown = 12;
+
             var newEffect = Instantiate(flameAuraPrefab, selectedEnemy.transform.position, Quaternion.identity);
             var plumeAttack = newEffect.AddComponent<PlumeAttack>();
             plumeAttack.Init(pattern, count, pulseInterval, isShort);
@@ -314,10 +343,47 @@ namespace BossfightLevel.BossfightMain
         }
         #endregion
 
+        private void PlayFinalMusic()
+        {
+            musicTransitioner.clip = audioClips[6];
+        }
+
         public IEnumerator WaitThenStop(float timeToWait)
         {
             yield return new WaitForSeconds(timeToWait);
             ProgressMusic();
+        }        
+        
+        public IEnumerator WaitForFinalMusic(float timeToWait)
+        {
+            yield return new WaitForSeconds(timeToWait);
+            PlayFinalMusic();
+        }        
+        
+        public IEnumerator PerformIntro()
+        {
+            introStarted = true;
+
+            enemyAnim.SetTrigger("GetUp");
+            CellSound.StopAll();
+            StopAndResetMusic();
+
+            yield return new WaitForSeconds(3);
+
+            ProgressMusic();
+
+            yield return new WaitForSeconds(audioClips[0].length / 2);
+            selectedEnemy.AI.Mode = AgentMode.Agressive;
+
+            enemyAnim.SetTrigger("PraiseSun");
+            targetHeight += Time.deltaTime / 4;
+
+            yield return new WaitForSeconds(audioClips[0].length / 2);
+
+            enemyAnim.SetTrigger("GoToIdleFloating");
+            canAttack = true;
+
+            introFinished = true;
         }
     }
 }

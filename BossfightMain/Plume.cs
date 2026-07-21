@@ -9,13 +9,13 @@ namespace BossfightLevel.BossfightMain
         private float timer;
         private float pulseTimer;
         private bool isShort;
+        private Light pointLight;
 
         public void Init(bool isShort = false)
         {
             this.isShort = isShort;
             timer = 10;
-
-            Debug.Log($"Plume Spawned at {transform.position}");
+            pointLight = GetComponentInChildren<Light>();
 
             plumeInitialized = true;
         }
@@ -44,11 +44,16 @@ namespace BossfightLevel.BossfightMain
                     SendPulse();
                 }
             }
+
+            if (timer < 1)
+            {
+                pointLight.intensity = Mathf.Lerp(pointLight.intensity, 0, 0.1f);
+                pointLight.range = Mathf.Lerp(pointLight.range, 0, 0.1f);
+            }
         }
 
         private void SendPulse()
         {
-            var player = PlayerManager.GetLocalPlayerAgent();
             var layerMask = LayerMask.GetMask("PlayerMover");
 
             var colliders = Physics.OverlapSphere(new Vector3(transform.position.x, transform.position.y + 0.2f, transform.position.z), 1f, layerMask);
@@ -59,6 +64,7 @@ namespace BossfightLevel.BossfightMain
                 {
                     if (collider.gameObject.layer == LayerManager.LAYER_PLAYER_MOVER)
                     {
+                        var player = collider.GetComponent<PlayerAgent>();
                         player.Damage.NoAirDamage(0.3f);
                     }
                 }
