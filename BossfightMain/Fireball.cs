@@ -1,18 +1,14 @@
-﻿using AirNavigation;
-using AssetShards;
+﻿using AssetShards;
 using Player;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using SNetwork;
 using UnityEngine;
-using static Il2CppSystem.Globalization.CultureInfo;
 
 namespace BossfightLevel.BossfightMain
 {
     class Fireball : MonoBehaviour
     {
+        public static Fireball Instance { get; private set; }
+
         private float timer;
         private Vector3 previousPos;
         private GameObject explosionPrefab;
@@ -20,16 +16,13 @@ namespace BossfightLevel.BossfightMain
 
         private Vector3 target;
         private Vector3 direction;
-        private PlayerAgent player;
+        private PlayerAgent playerTarget;
 
-        public void OnEnable()
+        public void Init(int playerIndex)
         {
             explosionPrefab = AssetShardManager.GetLoadedAsset<GameObject>("Assets/-CustomStuff/CustomBossfightStuff/Attacks/Explosion.prefab");
             layerMask = LayerManager.MASK_ENEMY_PROJECTILE_COLLIDERS & ~LayerMask.GetMask("PlayerSynced");
-
-            var random = UnityEngine.Random.Range(0, PlayerManager.PlayerAgentsInLevel.Count - 1);
-
-            player = PlayerManager.PlayerAgentsInLevel[random];
+            playerTarget = PlayerManager.PlayerAgentsInLevel[playerIndex];
 
             previousPos = transform.position;
         }
@@ -51,10 +44,10 @@ namespace BossfightLevel.BossfightMain
             {
                 var layerMask = LayerManager.MASK_ENEMY_PROJECTILE_COLLIDERS & ~LayerMask.GetMask("PlayerSynced") & ~LayerMask.GetMask("PlayerMover");
 
-                if (Physics.Raycast(player.PlayerCharacterController.m_characterController.bounds.center, Vector3.down, out var hitInfo, Mathf.Infinity, layerMask))
+                if (Physics.Raycast(playerTarget.transform.position, Vector3.down, out var hitInfo, Mathf.Infinity, layerMask))
                 {
                     target = hitInfo.point;
-                    direction = (target - transform.position).normalized * 25 * Time.deltaTime;
+                    direction = (target - transform.position).normalized * 20 * Time.deltaTime;
                 }
             }
 
@@ -69,11 +62,11 @@ namespace BossfightLevel.BossfightMain
                 var cellsoundplayer = new CellSoundPlayer();
                 cellsoundplayer.Post(704948356u, hit.point);
 
-                if (Physics.Raycast(previousPos, player.PlayerCharacterController.m_characterController.bounds.center - previousPos, out var hitInfo, 3f, layerMask))
+                if (Physics.Raycast(previousPos, playerTarget.transform.position - previousPos, out var hitInfo, 3f, layerMask))
                 {
                     if (hitInfo.collider.gameObject.layer == LayerManager.LAYER_PLAYER_MOVER)
                     {
-                        player.Damage.NoAirDamage(4.8f);
+                        playerTarget.Damage.NoAirDamage(5f);
                     }
                 }
 

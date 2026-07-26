@@ -8,17 +8,32 @@ namespace BossfightLevel.BossfightMain
     {
         private Light sunlight;
         private float timer;
+        private float maxDuration;
         private float pulseTimer;
+        private float maxSizeOverTime;
+        private float startSize;
+        private bool initialized;
+        private bool doesDamage;
 
         public static event Action? OnSunAttackFinished;
 
-        public void OnEnable()
+        public void Init(float duration, float maxSizeOverTime = 1.5f, float startSize = 0.05f, bool doesDamage = true)
         {
-            timer = 10;
+            timer = duration;
+            maxDuration = duration;
+            this.doesDamage = doesDamage;
+            this.startSize = startSize;
+            this.maxSizeOverTime = maxSizeOverTime;
+            initialized = true;
         }
 
         public void Update()
         {
+            if (!initialized)
+            {
+                return;
+            }
+
             if (sunlight == null)
             {
                 sunlight = GetComponentInChildren<Light>();
@@ -29,9 +44,9 @@ namespace BossfightLevel.BossfightMain
 
             if (timer > 0)
             {
-                sunlight.intensity = Mathf.Lerp(0.2f, 0.9f, 1 - (timer / 10));
-                sunlight.range = Mathf.Lerp(0.5f, 75, 1 - (timer / 10));
-                transform.localScale = Vector3.Lerp(Vector3.one * 0.05f, Vector3.one * 1.5f, 1 - (timer / 10));
+                sunlight.intensity = Mathf.Lerp(0.2f, 0.9f, 1 - (timer / maxDuration));
+                sunlight.range = Mathf.Lerp(0.5f, transform.localScale.x * 50, 1 - (timer / maxDuration));
+                transform.localScale = Vector3.Lerp(Vector3.one * startSize, Vector3.one * maxSizeOverTime, 1 - (timer / maxDuration));
             }
 
             if (timer < 6 && timer > -4)
@@ -61,6 +76,11 @@ namespace BossfightLevel.BossfightMain
 
         private void SendPulse()
         {
+            if (!doesDamage)
+            {
+                return;
+            }
+
             var player = PlayerManager.GetLocalPlayerAgent();
             var layerMask = LayerManager.MASK_ENEMY_PROJECTILE_COLLIDERS & ~LayerMask.GetMask("PlayerSynced");
 
@@ -68,7 +88,7 @@ namespace BossfightLevel.BossfightMain
             {
                 if (hitInfo.collider.gameObject.layer == LayerManager.LAYER_PLAYER_MOVER)
                 {
-                    player.Damage.NoAirDamage(1.2f * (1 + (1 - (timer / 10))));
+                    player.Damage.NoAirDamage(1.25f * (1 + (1 - (timer / 10))));
                 }
             }
         }

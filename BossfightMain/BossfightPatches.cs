@@ -22,7 +22,7 @@ namespace StrikerBossfight.BossfightMain
         [HarmonyPrefix]
         private static bool Postfix_TryScream(EB_InCombat __instance)
         {
-            if (__instance.m_ai.m_enemyAgent.EnemyDataID == 150u)
+            if (__instance.m_ai.m_enemyAgent.EnemyDataID == 150u || __instance.m_ai.m_enemyAgent.EnemyDataID == 151u)
             {
                 return false;
             }

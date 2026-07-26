@@ -38,8 +38,11 @@ namespace StrikerBossfight
                 
                 var testLogic = Global.Current.gameObject.AddComponent<BossfightCore>();
                 LevelAPI.OnEnterLevel += testLogic.LevelStarted;
-                LevelAPI.OnLevelCleanup += testLogic.LevelQuit;
+                LevelAPI.OnLevelCleanup += testLogic.Cleanup;
             };
+
+            NetworkAPI.RegisterEvent<int>("OnNetworkedAttack", BossfightCore.OnNetworkedAttack);
+            NetworkAPI.RegisterEvent<int>("OnFireballTargetSet", FireballAttack.OnFireballTargetSet);
 
             Logger = Log;
 

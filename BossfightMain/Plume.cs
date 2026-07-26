@@ -65,7 +65,7 @@ namespace BossfightLevel.BossfightMain
                     if (collider.gameObject.layer == LayerManager.LAYER_PLAYER_MOVER)
                     {
                         var player = collider.GetComponent<PlayerAgent>();
-                        player.Damage.NoAirDamage(0.3f);
+                        player.Damage.NoAirDamage(0.5f);
                     }
                 }
             }

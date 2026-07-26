@@ -52,7 +52,7 @@ namespace BossfightLevel.BossfightMain
 
                     foreach (var player in playerPositions)
                     {
-                        if (Physics.Raycast(player.PlayerCharacterController.m_characterController.bounds.center, Vector3.down, out var hitInfo, Mathf.Infinity, layerMask))
+                        if (Physics.Raycast(player.transform.position + Vector3.up, Vector3.down, out var hitInfo, Mathf.Infinity, layerMask))
                         {
                             positions.Add(hitInfo.point);
                         }
@@ -93,6 +93,22 @@ namespace BossfightLevel.BossfightMain
                         if (Physics.Raycast(transform.position, Vector3.down, out var hitInfo, Mathf.Infinity, layerMask))
                         {
                             positions.Add(hitInfo.point + ((new Vector3(Mathf.Sin(radians), 0, Mathf.Cos(radians)) * 5 * iteration)));
+                        }
+                    }
+
+                    SendPulse(positions);
+                    break;                
+                
+                case PlumePattern.Spiral:
+
+                    for (int i = 0; i < 5; i++)
+                    {
+                        float angle = i * 72 + (15 * (iteration - 1));
+                        float radians = angle * Mathf.Deg2Rad;
+
+                        if (Physics.Raycast(transform.position, Vector3.down, out var hitInfo, Mathf.Infinity, layerMask))
+                        {
+                            positions.Add(hitInfo.point + new Vector3(Mathf.Sin(radians), 0, Mathf.Cos(radians)) * iteration * 3);
                         }
                     }
 
