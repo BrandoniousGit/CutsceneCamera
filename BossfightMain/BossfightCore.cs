@@ -3,14 +3,13 @@ using AIGraph;
 using AK;
 using AssetShards;
 using BepInEx.Unity.IL2CPP.Utils.Collections;
-using CellMenu;
 using Enemies;
 using GTFO.API;
 using LevelGeneration;
-using Localization;
 using Player;
 using SNetwork;
 using StrikerBossfight.BossfightMain;
+using StrikerBossfight.CutsceneCamera;
 using System.Collections;
 using UnityEngine;
 
@@ -36,12 +35,13 @@ namespace BossfightLevel.BossfightMain
         private GameObject preFireballEffectPrefab;
         private GameObject flameAuraPrefab;
 
-        private AudioSource escapeMusic;
+        private AudioSource spotlightEmitter;
         private AudioSource musicLooper;
         private AudioSource musicTransitioner;
 
         private List<AudioClip> audioClips;
         private AudioClip spotlightSfx;
+        private Light spotlight;
 
         private int currentMusicStep;
         private bool fadeMusicLooperOut;
@@ -58,7 +58,7 @@ namespace BossfightLevel.BossfightMain
         private float attackCooldown;
         private float targetHeight = 2;
 
-        public bool idontwantthingstohappen;
+        private List<Vector3> AllSpawnPoints = new List<Vector3>() { new Vector3(-62, 0, 127), new Vector3(62, 0, 127) };
 
         public void OnEnable()
         {
@@ -69,8 +69,8 @@ namespace BossfightLevel.BossfightMain
             FireballAttack.OnFireballAttackFinished += GoToIdleFloating;
             PlumeAttack.OnPlumeAttackFinished += GoToIdleFloating;
             BossfightPatches.OnVolumeChangedAction += OnVolumeChanged;
-        }        
-        
+        }
+
         public void OnDisable()
         {
             AnimationEventReceiver.PunchEventTriggered -= OnPunch;
@@ -87,7 +87,7 @@ namespace BossfightLevel.BossfightMain
                 return;
             }
 
-            escapeMusic.mute = !hasFocus;
+            spotlightEmitter.mute = !hasFocus;
             musicLooper.mute = !hasFocus;
             musicTransitioner.mute = !hasFocus;
         }
@@ -99,7 +99,7 @@ namespace BossfightLevel.BossfightMain
                 return;
             }
 
-            escapeMusic.volume = value;
+            spotlightEmitter.volume = value;
             musicLooper.volume = value;
             musicTransitioner.volume = value;
         }
@@ -138,12 +138,18 @@ namespace BossfightLevel.BossfightMain
 
         public void Update()
         {
-            if (GameStateManager.CurrentStateName == eGameStateName.ExpeditionFail)
+            if (GameStateManager.CurrentStateName == eGameStateName.ExpeditionFail || GameStateManager.CurrentStateName == eGameStateName.ExpeditionSuccess)
             {
                 StopAndResetMusic();
             }
 
-            if (!RundownManager.ExpeditionIsStarted || idontwantthingstohappen)
+            if (SNet.IsMaster && finalBoss != null)
+            {
+                finalBoss.Locomotion.m_maxMovementSpeed = 0;
+                finalBoss.transform.position = new Vector3(120, 228.5f, 292);
+            }
+
+            if (!RundownManager.ExpeditionIsStarted)
             {
                 return;
             }
@@ -221,8 +227,8 @@ namespace BossfightLevel.BossfightMain
             {
                 enteredPhase2 = true;
                 ProgressMusic();
-            }            
-            
+            }
+
             if (selectedEnemy.Damage.Health < (600 * PlayerManager.PlayerAgentsInLevel.Count * 0.33f) && !enteredPhase3)
             {
                 enteredPhase3 = true;
@@ -244,9 +250,9 @@ namespace BossfightLevel.BossfightMain
                     isOnCooldown = false;
                     canAttack = true;
                 }
-            }      
+            }
         }
-        
+
         public void OnPunch()
         {
             Debug.Log("PunchPerformed");
@@ -266,6 +272,7 @@ namespace BossfightLevel.BossfightMain
             var random = UnityEngine.Random.Range(0, 5);
             var random2 = UnityEngine.Random.Range(0, 4);
             var random3 = UnityEngine.Random.Range(0, 6);
+            var random4 = UnityEngine.Random.Range(0, 2);
 
             NetworkAPI.InvokeEvent<int>("OnNetworkedAttack", (random * 10) + random2);
             Debug.Log($"Sending value of {(random * 10) + random2} across network");
@@ -297,9 +304,9 @@ namespace BossfightLevel.BossfightMain
                     }
                     break;
                 case 4:
-                    attackCooldown += 15;
+                    attackCooldown += 6 - PlayerManager.PlayerAgentsInLevel.Count;
                     isOnCooldown = true;
-                    SpawnWave(WaveDatas.AllWaveDatas[random3], Vector3.zero);
+                    SpawnWave(WaveDatas.AllWaveDatas[random3], AllSpawnPoints[random4]);
                     break;
             }
         }
@@ -390,8 +397,12 @@ namespace BossfightLevel.BossfightMain
             enteredPhase2 = false;
             enteredPhase3 = false;
             youRaiseMeUp = false;
+            enteredFinal = false;
 
-            Destroy(escapeMusic);
+            StopAllCoroutines();
+
+            Destroy(spotlight);
+            Destroy(spotlightEmitter);
             Destroy(musicLooper);
             Destroy(musicTransitioner);
         }
@@ -400,15 +411,15 @@ namespace BossfightLevel.BossfightMain
         {
             audioClips = new List<AudioClip>();
 
-            escapeMusic = gameObject.AddComponent<AudioSource>();
+            spotlightEmitter = gameObject.AddComponent<AudioSource>();
             musicLooper = gameObject.AddComponent<AudioSource>();
             musicTransitioner = gameObject.AddComponent<AudioSource>();
 
-            escapeMusic.loop = false;
+            spotlightEmitter.loop = false;
             musicLooper.loop = true;
             musicTransitioner.loop = false;
 
-            escapeMusic.volume = 0.35f;
+            spotlightEmitter.volume = 0.35f;
             musicLooper.volume = 0.35f;
             musicTransitioner.volume = 0.35f;
 
@@ -419,6 +430,7 @@ namespace BossfightLevel.BossfightMain
             audioClips.Add(AssetShardManager.GetLoadedAsset<AudioClip>($"Assets/-CustomStuff/Music/Phase3Transition.ogg"));
             audioClips.Add(AssetShardManager.GetLoadedAsset<AudioClip>($"Assets/-CustomStuff/Music/Phase3Loop.ogg"));
             audioClips.Add(AssetShardManager.GetLoadedAsset<AudioClip>($"Assets/-CustomStuff/Music/FinalDesperation.ogg"));
+            spotlightSfx = AssetShardManager.GetLoadedAsset<AudioClip>($"Assets/-CustomStuff/Music/Spotlight.mp3");
 
             Debug.Log("Audio Loaded");
         }
@@ -431,6 +443,16 @@ namespace BossfightLevel.BossfightMain
             fireballAttack.transform.position += selectedEnemy.transform.position + (Vector3.up * 4f);
             fireballAttack.pulseInterval = pulseInterval;
             fireballAttack.duration = duration;
+        }
+
+        public void SpawnFireballAttacks(List<Vector3> positions, float pulseInterval = 2)
+        {
+            var newEffect = Instantiate(preFireballEffectPrefab, Vector3.zero, Quaternion.identity);
+            var fireballAttack = newEffect.AddComponent<FireballAttack>();
+            fireballAttack.transform.position += new Vector3(122, 370, 290);
+            fireballAttack.pulseInterval = pulseInterval;
+            fireballAttack.duration = 60;
+            fireballAttack.Init(positions);
         }
 
         public void SpawnSunAttack(float duration, float spawnHeight, float maxSizeOverTime = 1.5f, float startSize = 0.05f, bool doesDamage = true, bool isFinal = false)
@@ -448,8 +470,8 @@ namespace BossfightLevel.BossfightMain
 
             var sunAttack = newEffect.AddComponent<SunAttack>();
             sunAttack.Init(duration, maxSizeOverTime, startSize, doesDamage);
-        }    
-        
+        }
+
         public void SpawnFirePlumeAttacks(PlumePattern pattern, int count = 1, float pulseInterval = 1f, bool isShort = false)
         {
             var newEffect = Instantiate(flameAuraPrefab, selectedEnemy.transform.position, Quaternion.identity);
@@ -508,7 +530,7 @@ namespace BossfightLevel.BossfightMain
             {
                 for (int i = 0; i < val.Value; i++)
                 {
-                    EnemyAllocator.Current.SpawnEnemy(val.Key, PlayerManager.GetLocalPlayerAgent().CourseNode, AgentMode.Agressive, Vector3.zero, Quaternion.identity);
+                    EnemyAllocator.Current.SpawnEnemy(val.Key, PlayerManager.GetLocalPlayerAgent().CourseNode, AgentMode.Agressive, spawnPos, Quaternion.identity);
                     yield return new WaitForSeconds(0.05f);
                 }
             }
@@ -518,8 +540,8 @@ namespace BossfightLevel.BossfightMain
         {
             yield return new WaitForSeconds(timeToWait);
             ProgressMusic();
-        }        
-        
+        }
+
         public IEnumerator WaitForFinalMusic()
         {
             Debug.Log("Beginning final phase");
@@ -533,27 +555,69 @@ namespace BossfightLevel.BossfightMain
                     Type = GameData.eWardenObjectiveEventType.DimensionWarpTeam,
                     DimensionIndex = eDimensionIndex.Dimension_1,
                     Delay = 0
-                });                
+                });
             }
 
-            finalBoss.AI.Mode = AgentMode.Agressive;
-            finalBoss.Locomotion.ChangeState(ES_StateEnum.HibernateWakeUp);
-            finalBoss.Anim.SetTrigger("GoToIdleFloating");
+            var enemyList = AIG_CourseGraph.GetReachableEnemiesInNodes(PlayerManager.GetLocalPlayerAgent().CourseNode, 100);
 
-            yield return new WaitForSeconds(5);
-
-            finalBoss.Anim.SetTrigger("PraiseSun");
-
-            WorldEventManager.ExecuteEvent(new GameData.WardenObjectiveEventData()
+            foreach (var enemy in enemyList)
             {
-                Type = GameData.eWardenObjectiveEventType.AddToTimer,
-                Duration = 63,
-                Delay = 0
-            });
+                if (enemy.EnemyData.persistentID == 151u)
+                {
+                    finalBoss = enemy;
+                }
+            }
 
-            SpawnSunAttack(60, 150, 30, 1, false, true);
+            if (finalBoss != null)
+            {
+                finalBoss.AI.Mode = AgentMode.Agressive;
+                finalBoss.Locomotion.ChangeState(ES_StateEnum.HibernateWakeUp);
+                finalBoss.Anim.SetTrigger("GoToIdleFloating");
+
+                yield return new WaitForSeconds(5);
+                finalBoss.Anim.SetTrigger("PraiseSun");
+            }
+            else
+            {
+                yield return new WaitForSeconds(5);
+            }
+
+            List<Vector3> fireballPositionOverrides = new List<Vector3>()
+            {
+                new Vector3(130, 211, 187),
+                new Vector3(97, 210, 200),
+                new Vector3(65, 210, 193),
+                new Vector3(97, 214, 259),
+                new Vector3(87, 213, 164),
+                new Vector3(83, 212, 138),
+                new Vector3(59, 211, 150),
+                new Vector3(53, 208, 98),
+                new Vector3(151, 215, 242),
+                new Vector3(49, 208, 90),
+                new Vector3(69, 212, 124),
+                new Vector3(90, 211, 110),
+                new Vector3(46, 208, 36),
+                new Vector3(80, 209, 77),
+                new Vector3(55, 209, 62),
+                new Vector3(86, 207, 28)
+            };
+
+            SpawnSunAttack(65, 150, 30, 1, false, true);
+            SpawnFireballAttacks(fireballPositionOverrides, 0.5f);
 
             PlayFinalMusic();
+
+            yield return new WaitForSeconds(65);
+
+            if (GameStateManager.CurrentStateName != eGameStateName.ExpeditionSuccess)
+            {
+                foreach(var player in PlayerManager.PlayerAgentsInLevel)
+                {
+                    player.Damage.NoAirDamage(100);
+                }
+
+                StopAndResetMusic();
+            }
         }
 
         private IEnumerator Cleanup(CellSoundPlayer csPlayer, float waitTime)
@@ -567,15 +631,51 @@ namespace BossfightLevel.BossfightMain
         {
             introStarted = true;
 
-            CellSound.StopAll();
-            StopAndResetMusic();
-
             foreach (var player in PlayerManager.PlayerAgentsInLevel)
             {
-                player.TeleportTo(player.transform.position);
+                player.TeleportTo(new Vector3(0, 0, 110));
             }
 
-            yield return new WaitForSeconds(3);
+            yield return new WaitForSeconds(2);
+
+            CutsceneCameraLogic.Instance.ToggleCutscene(true);
+
+            var wallPrefab = AssetShardManager.GetLoadedAsset("Assets/-CustomStuff/Wall/BP_Gardens_Rocks_4x4M.prefab");
+            Instantiate(wallPrefab, new Vector3(0, 0, 96), Quaternion.identity);
+
+            CellSound.StopAll();
+            StopAndResetMusic();
+            spotlightEmitter.clip = spotlightSfx;
+            spotlightEmitter.Play();
+
+            var spotlightObject = new GameObject();
+            spotlight = spotlightObject.AddComponent<Light>();
+            spotlight.color = new Color(1, 0.2f, 0.2f, 1);
+            spotlight.transform.position = new Vector3(selectedEnemy.transform.position.x, 15, selectedEnemy.transform.position.z);
+            spotlight.range = 25;
+            spotlight.intensity = 0.7f;
+            spotlight.shape = LightShape.Cone;
+            spotlight.transform.LookAt(selectedEnemy.transform);
+
+            WorldEventManager.ExecuteEvent(new GameData.WardenObjectiveEventData()
+            {
+                Type = GameData.eWardenObjectiveEventType.OpenSecurityDoor,
+                DimensionIndex = eDimensionIndex.Reality,
+                Layer = LG_LayerType.SecondaryLayer,
+                LocalIndex = GameData.eLocalZoneIndex.Zone_2,
+                Delay = 0
+            });
+
+            WorldEventManager.ExecuteEvent(new GameData.WardenObjectiveEventData()
+            {
+                Type = GameData.eWardenObjectiveEventType.OpenSecurityDoor,
+                DimensionIndex = eDimensionIndex.Reality,
+                Layer = LG_LayerType.SecondaryLayer,
+                LocalIndex = GameData.eLocalZoneIndex.Zone_3,
+                Delay = 0
+            });
+
+            yield return new WaitForSeconds(1);
 
             enemyAnim.SetTrigger("GetUp");
 
@@ -596,7 +696,48 @@ namespace BossfightLevel.BossfightMain
             enemyAnim.SetTrigger("GoToIdleFloating");
             canAttack = true;
 
+            CutsceneCameraLogic.Instance.ToggleCutscene(false);
+
             introFinished = true;
+
+            StartCoroutine(UnlimitedStrikers().WrapToIl2Cpp());
+            StartCoroutine(UnlimitedGiants().WrapToIl2Cpp());
+        }
+
+        public IEnumerator UnlimitedStrikers()
+        {
+            if (SNet.IsMaster)
+            {
+                EnemyAllocator.Current.SpawnEnemy(13u, PlayerManager.GetLocalPlayerAgent().CourseNode, AgentMode.Agressive, new Vector3(-62, 0, 127), Quaternion.identity);
+                EnemyAllocator.Current.SpawnEnemy(13u, PlayerManager.GetLocalPlayerAgent().CourseNode, AgentMode.Agressive, new Vector3(62, 0, 127), Quaternion.identity);
+                EnemyAllocator.Current.SpawnEnemy(11u, PlayerManager.GetLocalPlayerAgent().CourseNode, AgentMode.Agressive, new Vector3(-62, 0, 127), Quaternion.identity);
+                EnemyAllocator.Current.SpawnEnemy(11u, PlayerManager.GetLocalPlayerAgent().CourseNode, AgentMode.Agressive, new Vector3(62, 0, 127), Quaternion.identity);
+
+                var spawnTimer = enteredPhase3 ? 12 : enteredPhase2 ? 16 : 20;
+
+                yield return new WaitForSeconds(spawnTimer / PlayerManager.PlayerAgentsInLevel.Count);
+
+                if (!enteredFinal)
+                {
+                    StartCoroutine(UnlimitedStrikers().WrapToIl2Cpp());
+                }
+            }
+        }        
+        
+        public IEnumerator UnlimitedGiants()
+        {
+            if (SNet.IsMaster)
+            {
+                EnemyAllocator.Current.SpawnEnemy(16u, PlayerManager.GetLocalPlayerAgent().CourseNode, AgentMode.Agressive, new Vector3(-62, 0, 127), Quaternion.identity);
+                EnemyAllocator.Current.SpawnEnemy(16u, PlayerManager.GetLocalPlayerAgent().CourseNode, AgentMode.Agressive, new Vector3(62, 0, 127), Quaternion.identity);
+
+                yield return new WaitForSeconds(40);
+
+                if (!enteredFinal)
+                {
+                    StartCoroutine(UnlimitedGiants().WrapToIl2Cpp());
+                }
+            }
         }
     }
 }

@@ -14,15 +14,27 @@ namespace BossfightLevel.BossfightMain
         private GameObject explosionPrefab;
         private LayerMask layerMask;
 
-        private Vector3 target;
+        private Vector3? target;
         private Vector3 direction;
         private PlayerAgent playerTarget;
+        private bool targetOverriden;
 
-        public void Init(int playerIndex)
+        public void Init(int playerIndex, Vector3? targetOverride = null)
         {
             explosionPrefab = AssetShardManager.GetLoadedAsset<GameObject>("Assets/-CustomStuff/CustomBossfightStuff/Attacks/Explosion.prefab");
             layerMask = LayerManager.MASK_ENEMY_PROJECTILE_COLLIDERS & ~LayerMask.GetMask("PlayerSynced");
-            playerTarget = PlayerManager.PlayerAgentsInLevel[playerIndex];
+
+            if (targetOverride == null)
+            {
+                playerTarget = PlayerManager.PlayerAgentsInLevel[playerIndex];
+            }
+            else
+            {
+                target = targetOverride.Value;
+                direction = (target - transform.position).Value.normalized * 40 * Time.deltaTime;
+                transform.localScale *= 4;
+                targetOverriden = true;
+            }
 
             previousPos = transform.position;
         }
@@ -31,7 +43,7 @@ namespace BossfightLevel.BossfightMain
         {
             timer += Time.deltaTime;
 
-            if (timer >= 10)
+            if (timer >= 25)
             {
                 Destroy(gameObject);
             }
@@ -40,14 +52,14 @@ namespace BossfightLevel.BossfightMain
             {
                 transform.position += direction;
             }
-            else
+            else if (!targetOverriden)
             {
                 var layerMask = LayerManager.MASK_ENEMY_PROJECTILE_COLLIDERS & ~LayerMask.GetMask("PlayerSynced") & ~LayerMask.GetMask("PlayerMover");
 
-                if (Physics.Raycast(playerTarget.transform.position, Vector3.down, out var hitInfo, Mathf.Infinity, layerMask))
+                if (Physics.Raycast(playerTarget.transform.position + Vector3.up * 0.05f, Vector3.down, out var hitInfo, Mathf.Infinity, layerMask))
                 {
                     target = hitInfo.point;
-                    direction = (target - transform.position).normalized * 20 * Time.deltaTime;
+                    direction = (target - transform.position).Value.normalized * 20 * Time.deltaTime;
                 }
             }
 
@@ -62,11 +74,11 @@ namespace BossfightLevel.BossfightMain
                 var cellsoundplayer = new CellSoundPlayer();
                 cellsoundplayer.Post(704948356u, hit.point);
 
-                if (Physics.Raycast(previousPos, playerTarget.transform.position - previousPos, out var hitInfo, 3f, layerMask))
+                if (Physics.Raycast(previousPos, PlayerManager.GetLocalPlayerAgent().transform.position - previousPos, out var hitInfo, targetOverriden ? 12f : 3.5f, layerMask))
                 {
                     if (hitInfo.collider.gameObject.layer == LayerManager.LAYER_PLAYER_MOVER)
                     {
-                        playerTarget.Damage.NoAirDamage(5f);
+                        PlayerManager.GetLocalPlayerAgent().Damage.NoAirDamage(targetOverriden ? 8f : 5f);
                     }
                 }
 

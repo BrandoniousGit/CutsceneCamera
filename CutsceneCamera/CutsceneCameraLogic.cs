@@ -11,6 +11,8 @@ namespace StrikerBossfight.CutsceneCamera
     {
         public bool cutsceneActive, debugMode = false;
 
+        public static CutsceneCameraLogic Instance { get; set; }
+
         public GameObject cutsceneCanvasObject;
         public GameObject Image1, Image2;
         public PlayerAgent player;
@@ -43,27 +45,31 @@ namespace StrikerBossfight.CutsceneCamera
 
         public AnimationCurve easeInOutCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
 
-        public void Awake()
+        public void LevelStarted()
         {
+            player = PlayerManager.GetLocalPlayerAgent();
+            fpsCamera = player.FPSCamera.transform;
+
             var sequenceData = new List<CameraPositionData>
             {
                 new CameraPositionData
                 {
-                    StartPos = new Vector3(-4.1845903f, 4.845959f, 20.96401f),
-                    EndPos = new Vector3(-8.809374f, 5.344844f, 20.55906f),
-                    StartRot = new Vector3(0f, 270f, 0f),
-                    EndRot = new Vector3(0f, 270f, 0f),
-                    CamEasingType = CameraPositionData.EasingType.EaseOut,
-                    WaitAfterMove = 2.2f
+                    StartPos = fpsCamera.transform.position,
+                    EndPos = new Vector3(0, 4f, 105),
+                    StartRot = new Vector3(0f, 0f, 0f),
+                    EndRot = new Vector3(0f, 0f, 0f),
+                    CamEasingType = CameraPositionData.EasingType.EaseIn,
+                    ShotDuration = 0.5f,
                 },
                 new CameraPositionData
                 {
-                    StartPos = new Vector3(-1.4201511f, 6.7959437f, 114.20211f),
-                    EndPos = new Vector3(-10.149621f, 6.265077f, 114.101974f),
-                    StartRot = new Vector3(0f, 270f, 0f),
-                    EndRot = new Vector3(0f, 270f, 0f),
+                    StartPos = new Vector3(0, 4f, 105),
+                    EndPos = new Vector3(0, 4f, 120),
+                    StartRot = new Vector3(0f, 0f, 0f),
+                    EndRot = new Vector3(0f, 0f, 0f),
                     CamEasingType = CameraPositionData.EasingType.EaseOut,
-                    WaitAfterMove = 2.2f
+                    ShotDuration = 12,
+                    WaitAfterMove = 0
                 }
             };
 
@@ -73,14 +79,10 @@ namespace StrikerBossfight.CutsceneCamera
                 PersistentId = 1,
                 SequenceData = sequenceData
             };
-        }
 
-        public void LevelStarted()
-        {
             SetupCameraCanvas();
-            player = PlayerManager.GetLocalPlayerAgent();
-            fpsCamera = player.FPSCamera.transform;
             cameraParent = new GameObject("Camera Parent");
+            current = data.SequenceData.First();
         }
 
         public void SetupCameraCanvas()
@@ -126,6 +128,13 @@ namespace StrikerBossfight.CutsceneCamera
             if (!RundownManager.ExpeditionIsStarted)
             {
                 return;
+            }
+
+            if (Instance == null)
+            {
+                Debug.LogWarning("Getting Instance");
+                Instance = this;
+                Debug.LogWarning("Done");
             }
 
             if (Input.GetKeyDown(KeyCode.X))
@@ -204,6 +213,7 @@ namespace StrikerBossfight.CutsceneCamera
                 cameraParent.transform.position = player.FPItemHolder.transform.position;
             }
 
+            current.StartPos = fpsCamera.transform.position;
             cutsceneActive = isActive;
             player.PlayerSyncModel.SetHeadVisible(isActive, isActive);
             cutsceneCanvasObject.SetActive(isActive);
